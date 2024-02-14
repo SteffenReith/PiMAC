@@ -2,8 +2,13 @@ target
 project
 .metals/
 .bloop/
+.bsp/
 
 .DS_Store
 
 .idea/
 .vscode/
+
+gen/src/verilog/*.v
+gen/src/vhdl/*.vhd
+
