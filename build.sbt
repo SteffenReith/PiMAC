@@ -1,13 +1,11 @@
 name := "PipeMult"
 version := "1.0"
-scalaVersion := "2.12.16"
+scalaVersion := "2.11.12"
 
 // Added the spinal libraries
-libraryDependencies ++= Seq(
-  "cc.redberry" %% "rings.scaladsl" % "2.5.7",
-  "com.github.spinalhdl" %% "spinalhdl-core" % latest.release,
-  "com.github.spinalhdl" %% "spinalhdl-lib"  % latest.release
-  "com.github.spinalhdl" %% "spinalhdl-sim"  % latest.release)
+libraryDependencies ++= Seq("com.github.spinalhdl" %% "spinalhdl-core_2.11" % latest.release,
+                            "com.github.spinalhdl" %% "spinalhdl-lib_2.11"  % latest.release
+                            "com.github.spinalhdl" %% "spinalhdl-sim_2.11"  % latest.release)
 
 fork := true
 
