@@ -12,3 +12,6 @@ project
 gen/src/verilog/*.v
 gen/src/vhdl/*.vhd
 
+simWorkspace/
+
+tmp/

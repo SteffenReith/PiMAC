@@ -5,62 +5,65 @@
  * Project Name:   PipelinedMultiply - A demo for SpinalHDL's pipeline framework
  */
 import scala.sys.exit
-import scala.util.Random._
+import scala.util.Random
 
 import spinal.core._
 import spinal.core.sim._
-import spinal.lib.sim.{StreamMonitor, StreamDriver, StreamReadyRandomizer, ScoreboardInOrder}
 
 import scopt.OptionParser
 
 object PipelinedMultiplySim {
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]) : Unit = {
+
+    // The width of the tested muliplier
+    val mWidth = 16
+
+    printf(s"INFO: Start simulation (Width of multiplier is $mWidth)")
 
     // Create a simple simulation environment
-    SimConfig.withFstWave.compile(new PipelinedMultiply(16)).doSim(seed = 2) { dut =>
+    SimConfig.withFstWave.compile(new PipelinedMultiply(mWidth)).doSim(seed = 2) { dut =>
 
-      val a = MOps(16)
-      a.opA := 1
-      a.opB := 1
+      val operands = MOps(width = mWidth)
 
-      dut
+      // Do the simulation for 10k cycles
+      SimTimeout(10000)
 
+      // Create a 100MHz clock
       dut.clockDomain.forkStimulus(10)
-      dut.clockDomain.waitActiveEdgeWhere(scoreboard.matches == 100)
+
+      // Indicate invalid operands
+      dut.io.ops.valid #= false
+
+      // Feed 100 operands in the simulation
+      for (i <- 0 until 100) {
+      
+        // Give some information 
+        printf(s"INFO: Simulation step $i")
+
+        // Set random values 
+        operands.opA #= Random.nextInt(1 << mWidth)
+        operands.opB #= Random.nextInt(1 << mWidth) 
+      
+        // Wait a random time (maximal 1000 - 1 cycles)
+        sleep(Random.nextInt(1000))
+
+        // Wait until the input stream is ready to receive data
+        waitUntil(dut.io.ops.ready.toBoolean)
+
+        // Feed new data in the simulation
+        dut.io.ops.payload := operands
+        dut.io.ops.valid #= true
+        sleep(1)
+        dut.io.ops.valid #= false
+
+      }
+
+      // Give some information about the ended simulation
+      println("INFO: Simulation terminated")
 
     }
 
   }
 
-}
-
-object Example extends App {
-  val dut = SimConfig.withWave.compile(StreamFifo(Bits(8 bits), 2))
-
-  dut.doSim("simple test") { dut =>
-    SimTimeout(10000)
-
-    val scoreboard = ScoreboardInOrder[Int]()
-
-    dut.io.flush #= false
-
-    // drive random data and add pushed data to scoreboard
-    StreamDriver(dut.io.push, dut.clockDomain) { payload =>
-      payload.randomize()
-      true
-    }
-    StreamMonitor(dut.io.push, dut.clockDomain) { payload =>
-      scoreboard.pushRef(payload.toInt)
-    }
-
-    // randmize ready on the output and add popped data to scoreboard
-    StreamReadyRandomizer(dut.io.pop, dut.clockDomain)
-    StreamMonitor(dut.io.pop, dut.clockDomain) { payload =>
-      scoreboard.pushDut(payload.toInt)
-    }
-
-    dut.clockDomain.forkStimulus(10)
-    dut.clockDomain.waitActiveEdgeWhere(scoreboard.matches == 100)
-  }
 }

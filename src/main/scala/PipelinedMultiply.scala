@@ -25,59 +25,66 @@ class PipelinedMultiply(width : Int) extends Component {
 
   val io = new Bundle {
 
-    // Start the pipeline
-    val start = in Bool()
-
-    // Indicates a completed multiplication
-    val ready = in Bool()
-
-    // The arguments
+    // The two arguments to by multiplied
     val ops = slave Stream(MOps(width))
 
     // Gives the multiplied number
-    val result  = master Stream(UInt(2 * width bits))
+    val result = master Stream(UInt(2 * width bits))
 
   }
 
-  // Create the init stage of our pipeline
-  val initStage  = Node()
+  // Create all stages of the pipeline
+  val mStages = Array.fill(width + 1)(Node())
 
-  // Create all other stages for the multiplication
-  private val mStages = for (i <- 0 until width) yield {Node()}
+  // Link the stages together
+  val stageLinks = for (i <- 0 until width) yield StageLink(mStages(i), mStages(i + 1))
 
-  // Connect the stages by simple pipeline-registers
-  private val stageLinks = for (i <- 0 until (width - 1)) yield {StageLink(mStages(i), mStages(i + 1))}
+  // Some syntactic sugar for areas bound to a node
+  class NodeArea(at : Int) extends NodeMirror(mStages(at))
 
-  // Connect the init stage with the first stage for multiplication
-  private val initLink = StageLink(initStage, mStages(0))
+  // Insert data in the multiplier pipeline
+  val firstStage = mStages.head
+  val firstInserter = new firstStage.Area {
 
-  // Create payloads
-  val OPS = Payload(MOps(width))
-  val ACC = Payload(UInt(2 * width bits))
+    // Insert the arguments 
+    arbitrateFrom(io.ops)
 
-  // Bind the init stage to in circuits interface
-  io.ops.ready    := initStage.ready
-  initStage.valid := io.ops.valid
-  initStage(OPS)  := io.ops.payload
+    // Data (argument and computed results) to be moved through the pipeline
+    val OPS = insert(io.ops.payload)
+    val ACC = insert(UInt(2 * width bits) init(0))
 
-  // Init the accumulator in init stage
-  initStage(ACC) := 0
+  }
 
-  // Create the computation in each stage
-  for(i <- 1 until width - 1) yield {
+  // Create the computation for each stage
+  var oldInserter = firstInserter
+  for (i <- 1 until width + 1) yield {
 
-    mStages(i + 1)(OPS) := mStages(i)(OPS)
-    mStages(i + 1)(ACC) := mStages(i)(ACC) + 1
+    // Build the next stage
+    var newInserter = new NodeArea(i + 1) {
+     
+      val OPS = insert(oldInserter.OPS)
+      val ACC = insert(oldInserter.ACC)
+
+    }
+
+    oldInserter = newInserter
 
   }
 
   // Connect the end of the pipeline to the output stream
-  mStages(width - 1).ready := io.result.ready
-  io.result.valid             := mStages(width - 1).valid
-  io.result.payload           := mStages(width - 1)(ACC)
+  val finalStage = mStages.last
+  var finalInserter = new finalStage.Area {
+
+    // Move the results to the output stream
+    arbitrateTo(io.result)
+   
+    // Get the computed result
+    io.result.payload := finalStage.ACC
+
+  } 
 
   // Build the complete pipeline
-  Builder(initLink, stageLinks: _*)
+  Builder(stageLinks)
 
 }
 
@@ -90,10 +97,10 @@ object PipelinedMultiply {
 
   def main(args: Array[String]) : Unit = {
 
-    def elaborate : PipelinedMultiply = {
+    def elaborate(width : Int) : PipelinedMultiply = {
 
       // Create a multiplier instance
-      new PipelinedMultiply(16)
+      new PipelinedMultiply(width)
 
     }
 
@@ -101,12 +108,12 @@ object PipelinedMultiply {
     SpinalConfig(mergeAsyncProcess = true,
                  genVhdlPkg = true,
                  defaultConfigForClockDomains = globalClockConfig,
-                 targetDirectory="gen/src/vhdl").generateVhdl(elaborate).printPruned()
+                 targetDirectory="gen/src/vhdl").generateVhdl(elaborate(16)).printPruned()
 
     // Generate Verilog
     SpinalConfig(mergeAsyncProcess = true,
                  defaultConfigForClockDomains = globalClockConfig,
-                 targetDirectory="gen/src/verilog").generateVerilog(elaborate).printPruned()
+                 targetDirectory="gen/src/verilog").generateVerilog(elaborate(16)).printPruned()
 
   }
 
