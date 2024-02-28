@@ -11,23 +11,16 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.misc.pipeline._
 
-// A container for the two arguments of an multiplication
-case class MOps(width : Int) extends Bundle {
-
-   val opA = UInt(width bits)
-   val opB = UInt(width bits)
-
-}
-
 class PipelinedMultiply(width : Int) extends Component {
 
   // Check for correct width
   assert(width > 1, message = "ERROR: Width of PipelinedMultiply has to be at least 2!")
 
   val io = new Bundle {
-    val a,b = in UInt(width bits)
+    val a      = in  UInt(width bits)
+    val b      = in  UInt(width bits)
     val result = out UInt(2*width bits)
-  }
+  }.setName("")
 
   // Let's define the Nodes for our pipeline
   val nodes = Array.fill(width)(Node())

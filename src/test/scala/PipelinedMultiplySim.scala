@@ -14,48 +14,52 @@ import scopt.OptionParser
 
 object PipelinedMultiplySim {
 
+  // Some simple conversion functions (all periods / ticks in this simulation are given in picoseconds)
+  def ns2ps(x : Int) = 1000 * x
+  def us2ps(x : Int) = 1000 * ns2ps(x)
+  def ms2ps(x : Int) = 1000 * us2ps(x)
+
   def main(args: Array[String]) : Unit = {
 
     // The width of the tested muliplier
     val mWidth = 16
 
-    printf(s"INFO: Start simulation (Width of multiplier is $mWidth)")
+     // Use 100Mhz for the simulation
+    val spinalConfig = SpinalConfig(defaultClockDomainFrequency = FixedFrequency(100 MHz))
 
     // Create a simple simulation environment
-    SimConfig.withFstWave.compile(new PipelinedMultiply(mWidth)).doSim(seed = 2) { dut =>
+    SimConfig.workspacePath("gen/sim")
+             .allOptimisation
+             .withConfig(spinalConfig)
+             .withWave
+             .compile(new PipelinedMultiply(mWidth)).doSim(seed = 2) { dut =>
 
-      val operands = MOps(width = mWidth)
+      // Give some general info about the simulation
+      printf(s"INFO: Start simulation (Width of multiplier is $mWidth)\n‚")
 
-      // Do the simulation for 10k cycles
-      SimTimeout(10000)
+      // Do the simulation for 100 iterations cycles
+      SimTimeout(100 * ns2ps(20) + 1000)
 
       // Create a 100MHz clock
-      dut.clockDomain.forkStimulus(10)
+      dut.clockDomain.forkStimulus(period = ns2ps(10))
 
-      // Indicate invalid operands
-      dut.io.ops.valid #= false
+      // Print some information every real second
+      dut.clockDomain.forkSimSpeedPrinter(1.0)
 
       // Feed 100 operands in the simulation
       for (i <- 0 until 100) {
       
         // Give some information 
-        printf(s"INFO: Simulation step $i")
-
-        // Set random values 
-        operands.opA #= Random.nextInt(1 << mWidth)
-        operands.opB #= Random.nextInt(1 << mWidth) 
+        printf(s"INFO: Simulation step $i\n")
       
-        // Wait a random time (maximal 1000 - 1 cycles)
-        sleep(Random.nextInt(1000))
-
-        // Wait until the input stream is ready to receive data
-        waitUntil(dut.io.ops.ready.toBoolean)
-
         // Feed new data in the simulation
-        dut.io.ops.payload := operands
-        dut.io.ops.valid #= true
-        sleep(1)
-        dut.io.ops.valid #= false
+        dut.io.a #= 10
+        dut.io.b #= 11
+        sleep(ns2ps(10))
+
+        dut.io.a #= 0
+        dut.io.b #= 0
+        sleep(ns2ps(10))
 
       }
 
