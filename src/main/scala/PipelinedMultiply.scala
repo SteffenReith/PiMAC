@@ -3,6 +3,7 @@
  *
  * Create Date:    Tue Feb 13 22:29:34 CET 2024 
  * Project Name:   PipelinedMultiply - A demo for SpinalHDL's pipeline framework
+ * Note:           Basic design by Charles Papon
  */
 import scala.language.postfixOps
 
@@ -24,67 +25,24 @@ class PipelinedMultiply(width : Int) extends Component {
   assert(width > 1, message = "ERROR: Width of PipelinedMultiply has to be at least 2!")
 
   val io = new Bundle {
-
-    // The two arguments to by multiplied
-    val ops = slave Stream(MOps(width))
-
-    // Gives the multiplied number
-    val result = master Stream(UInt(2 * width bits))
-
+    val a,b = in UInt(width bits)
+    val result = out UInt(2*width bits)
   }
 
-  // Create all stages of the pipeline
-  val mStages = Array.fill(width + 1)(Node())
-
-  // Link the stages together
-  val stageLinks = for (i <- 0 until width) yield StageLink(mStages(i), mStages(i + 1))
-
-  // Some syntactic sugar for areas bound to a node
-  class NodeArea(at : Int) extends NodeMirror(mStages(at))
-
-  // Insert data in the multiplier pipeline
-  val firstStage = mStages.head
-  val firstInserter = new firstStage.Area {
-
-    // Insert the arguments 
-    arbitrateFrom(io.ops)
-
-    // Data (argument and computed results) to be moved through the pipeline
-    val OPS = insert(io.ops.payload)
-    val ACC = insert(UInt(2 * width bits) init(0))
-
+  // Let's define the Nodes for our pipeline
+  val nodes = Array.fill(width)(Node())
+  val connectors = Array.tabulate(width-1)(i => StageLink(nodes(i), nodes(i + 1)))
+  val A = nodes(0).insert(io.a)
+  val B = nodes(0).insert(io.b)
+  
+  val ACC = Array.tabulate(width)(i => Payload(UInt(width + i + 1 bits)))
+  for(i <- 0 until width; node = nodes(i)) new node.Area {
+    ACC(i) := (i == 0).mux[UInt](0, ACC(i-1)) +^ (A << i).andMask(B(i))
   }
 
-  // Create the computation for each stage
-  var oldInserter = firstInserter
-  for (i <- 1 until width + 1) yield {
+  io.result := nodes.last(ACC.last)
 
-    // Build the next stage
-    var newInserter = new NodeArea(i + 1) {
-     
-      val OPS = insert(oldInserter.OPS)
-      val ACC = insert(oldInserter.ACC)
-
-    }
-
-    oldInserter = newInserter
-
-  }
-
-  // Connect the end of the pipeline to the output stream
-  val finalStage = mStages.last
-  var finalInserter = new finalStage.Area {
-
-    // Move the results to the output stream
-    arbitrateTo(io.result)
-   
-    // Get the computed result
-    io.result.payload := finalStage.ACC
-
-  } 
-
-  // Build the complete pipeline
-  Builder(stageLinks)
+  Builder(connectors)
 
 }
 
@@ -118,3 +76,4 @@ object PipelinedMultiply {
   }
 
 }
+
