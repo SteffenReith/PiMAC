@@ -14,4 +14,7 @@ gen/src/vhdl/*.vhd
 
 simWorkspace/
 
+gen/sim/.cache
+gen/sim/PipelinedMultiply
+
 tmp/
