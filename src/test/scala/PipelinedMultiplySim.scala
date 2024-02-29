@@ -7,6 +7,8 @@
 import scala.sys.exit
 import scala.util.Random
 
+import spinal.lib._
+
 import spinal.core._
 import spinal.core.sim._
 
@@ -35,13 +37,13 @@ object PipelinedMultiplySim {
              .compile(new PipelinedMultiply(mWidth)).doSim(seed = 2) { dut =>
 
       // Give some general info about the simulation
-      printf(s"INFO: Start simulation (Width of multiplier is $mWidth)\n‚")
-
+      printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
+     
       // Do the simulation for 100 iterations cycles
       SimTimeout(100 * ns2ps(20) + 1000)
 
       // Create a 100MHz clock
-      dut.clockDomain.forkStimulus(period = ns2ps(10))
+      dut.clockDomain.forkStimulus(period = 1000) //ns2ps(10))
 
       // Print some information every real second
       dut.clockDomain.forkSimSpeedPrinter(1.0)
@@ -55,11 +57,11 @@ object PipelinedMultiplySim {
         // Feed new data in the simulation
         dut.io.a #= 10
         dut.io.b #= 11
-        sleep(ns2ps(10))
+        sleep(10000)//ns2ps(10))
 
         dut.io.a #= 0
         dut.io.b #= 0
-        sleep(ns2ps(10))
+        sleep(10000)//ns2ps(10))
 
       }
 
