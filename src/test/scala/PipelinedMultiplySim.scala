@@ -95,11 +95,24 @@ object PipelinedMultiplySim {
         printf("INFO: Started a thread to check the result of the simulation\n")
 
         // Wait for result from simulated pipeline (one more step for first fed data)
-        for (i <- 0 until dut.getLatency() + 1) dut.clockDomain.waitSampling()
+        for (i <- 0 until dut.getLatency()) dut.clockDomain.waitSampling()
 
-        // Get data out of the delay queue
-        val (a,b) = argsQueue.dequeue
-        printf(f"INFO: Eat A: ${a}, B: ${b} Pipe: ${dut.io.result.toLong} (Check: ${a.toLong * b.toLong})\n")
+        // Check all testcases 
+        for (i <- 0 until simNum) {
+
+          // Wait for the next clock cycle
+          dut.clockDomain.waitSampling()
+
+          // Get data out of the delay queue
+          val (a,b) = argsQueue.dequeue
+
+          // Check the result
+          assert((a.toLong * b.toLong) == dut.io.result.toLong, s"Got ${dut.io.result.toLong}, expected ${a.toLong * b.toLong}\n")
+
+          // Give some info
+          printf(f"INFO: Eat test case ${i} with A: ${a}, B: ${b} Pipe: ${dut.io.result.toLong} (Check: ${a.toLong * b.toLong})\n")
+
+        }
 
       }
 
