@@ -43,6 +43,7 @@ class PipelinedMultiply(width : Int) extends Component {
   // Declare the payload for each stage (the intermediate value grows) 
   val ACC = Array.tabulate(width)(i => Payload(UInt(width + i + 1 bits)))
  
+  // Init the accumulator on the first stage and add the ith bit-product on stage i
   for(i <- 0 until width; node = nodes(i)) new node.Area {
     ACC(i) := (i == 0).mux[UInt](0, ACC(i-1)) +^ (A << i).andMask(B(i))
   }

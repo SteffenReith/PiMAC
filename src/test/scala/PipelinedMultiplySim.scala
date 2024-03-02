@@ -6,6 +6,7 @@
  */
 import scala.sys.exit
 import scala.util.Random
+import scala.collection.{mutable => mut}
 
 import spinal.lib._
 
@@ -13,6 +14,7 @@ import spinal.core._
 import spinal.core.sim._
 
 import scopt.OptionParser
+import scala.collection.immutable.Queue
 
 object PipelinedMultiplySim {
 
@@ -21,10 +23,19 @@ object PipelinedMultiplySim {
   def us2ps(x : Int) = 1000 * ns2ps(x)
   def ms2ps(x : Int) = 1000 * us2ps(x)
 
+  // Gives a remainder r == x % n with 0 <= r < n
+  def unsignedMod(x : Int, n : Int) = (((x % n) + n) % n)
+
   def main(args: Array[String]) : Unit = {
+
+    // Number of single simulations 
+    val simNum = 100
 
     // The width of the tested muliplier
     val mWidth = 16
+
+    // Queue used to delay the arguments until the results leave the pipeline
+    var argsQueue = mut.Queue[(Int,Int)]()
 
      // Use 100Mhz for the simulation
     val spinalConfig = SpinalConfig(defaultClockDomainFrequency = FixedFrequency(100 MHz))
@@ -38,9 +49,10 @@ object PipelinedMultiplySim {
 
       // Give some general info about the simulation
       printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
-     
+      printf(s"INFO: Latency of simulated pipline is ${dut.getLatency()} cycles\n")
+
       // Do the simulation for 100 iterations cycles
-      SimTimeout(100 * ns2ps(20) + 1000)
+      SimTimeout(simNum * ns2ps(20) + 1000)
 
       // Create a 100MHz clock
       dut.clockDomain.forkStimulus(period = 1000) //ns2ps(10))
@@ -48,22 +60,52 @@ object PipelinedMultiplySim {
       // Print some information every real second
       dut.clockDomain.forkSimSpeedPrinter(1.0)
 
-      // Feed 100 operands in the simulation
-      for (i <- 0 until 100) {
-      
-        // Give some information 
-        printf(s"INFO: Simulation step $i\n")
-      
-        // Feed new data in the simulation
-        dut.io.a #= 10
-        dut.io.b #= 11
-        sleep(10000)//ns2ps(10))
+      // Create a thread for adding / creating test data 
+      val feeder = fork {
 
-        dut.io.a #= 0
-        dut.io.b #= 0
-        sleep(10000)//ns2ps(10))
+        // Give some information
+        printf("INFO: Started a thread to create random test data\n")
+
+        // Feed 100 operands in the simulation
+        for (i <- 0 until simNum) {
+      
+          // Generate test data randomly
+          val argA = unsignedMod(Random.nextInt(), 1 << mWidth)
+          val argB = unsignedMod(Random.nextInt(), 1 << mWidth)
+          
+          // Type the testcase to the console
+          printf(f"INFO: Feed test case #${i}%3d with A=${argA}%5d and B=${argB}%5d\n")
+
+          // Put the test data to the delay queue
+          argsQueue.enqueue((argA, argB))
+
+          // Feed the data into the simulation of the multiplier
+          dut.io.a #= argA
+          dut.io.b #= argB
+          dut.clockDomain.waitSampling()
+
+        }
 
       }
+
+      // Create a thread to check the result of the simulation
+      val eater = fork {
+
+        // Give some information
+        printf("INFO: Started a thread to check the result of the simulation\n")
+
+        // Wait for result from simulated pipeline (one more step for first fed data)
+        for (i <- 0 until dut.getLatency() + 1) dut.clockDomain.waitSampling()
+
+        // Get data out of the delay queue
+        val (a,b) = argsQueue.dequeue
+        printf(f"INFO: Eat A: ${a}, B: ${b} Pipe: ${dut.io.result.toLong} (Check: ${a.toLong * b.toLong})\n")
+
+      }
+
+      // Wait until the complete simulation is done
+      feeder.join()
+      eater.join()
 
       // Give some information about the ended simulation
       println("INFO: Simulation terminated")
