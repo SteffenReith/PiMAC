@@ -14,22 +14,19 @@ import spinal.core._
 import spinal.core.sim._
 
 import scopt.OptionParser
-import scala.collection.immutable.Queue
 
 object PipelinedMultiplySim {
 
-  // Some simple conversion functions (all periods / ticks in this simulation are given in picoseconds)
-  def ns2ps(x : Int) = 1000 * x
-  def us2ps(x : Int) = 1000 * ns2ps(x)
-  def ms2ps(x : Int) = 1000 * us2ps(x)
-
-  // Gives a remainder r == x % n with 0 <= r < n
+  // Gives the smallest positive remainder r == x % n with 0 <= r < n
   def unsignedMod(x : Int, n : Int) = (((x % n) + n) % n)
 
   def main(args: Array[String]) : Unit = {
 
-    // Number of single simulations 
-    val simNum = 100
+    // Number of simulations steps 
+    val simNum = 1000
+
+    // Period used for the simulation
+    val simPeriod = 10
 
     // The width of the tested muliplier
     val mWidth = 16
@@ -37,28 +34,33 @@ object PipelinedMultiplySim {
     // Queue used to delay the arguments until the results leave the pipeline
     var argsQueue = mut.Queue[(Int,Int)]()
 
-     // Use 100Mhz for the simulation
-    val spinalConfig = SpinalConfig(defaultClockDomainFrequency = FixedFrequency(100 MHz))
+    // Make a synchronous reset and use the rising edge for the clock
+    val globalClockConfig = ClockDomainConfig(clockEdge        = RISING,
+                                              resetKind        = SYNC,
+                                              resetActiveLevel = HIGH)
+
+     // Use 100 MHz for the simulation
+    val spinalConfig = SpinalConfig(defaultClockDomainFrequency  = FixedFrequency(100 MHz),
+                                    defaultConfigForClockDomains = globalClockConfig)
 
     // Create a simple simulation environment
     SimConfig.workspacePath("gen/sim")
              .allOptimisation
              .withConfig(spinalConfig)
              .withWave
+             .withTimeScale(1 ns)
+             .withTimePrecision(100 ps)
              .compile(new PipelinedMultiply(mWidth)).doSim(seed = 2) { dut =>
 
       // Give some general info about the simulation
       printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
       printf(s"INFO: Latency of simulated pipline is ${dut.getLatency()} cycles\n")
 
-      // Do the simulation for 100 iterations cycles
-      SimTimeout(simNum * ns2ps(20) + 1000)
+      // Create a clock
+      dut.clockDomain.forkStimulus(simPeriod)
 
-      // Create a 100MHz clock
-      dut.clockDomain.forkStimulus(period = 1000) //ns2ps(10))
-
-      // Print some information every real second
-      dut.clockDomain.forkSimSpeedPrinter(1.0)
+      // Do the simulation for as much iterations cycles a test cases (plus some spare cycles)
+      SimTimeout(simPeriod * (simNum + 2 * dut.getLatency() + 10))
 
       // Create a thread for adding / creating test data 
       val feeder = fork {
@@ -121,7 +123,7 @@ object PipelinedMultiplySim {
       eater.join()
 
       // Give some information about the ended simulation
-      println("INFO: Simulation terminated")
+      println("INFO: Simulation terminated successfully!")
 
     }
 
