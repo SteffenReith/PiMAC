@@ -28,7 +28,7 @@ object PipelinedMultiplySim {
     // Period used for the simulation
     val simPeriod = 10
 
-    // The width of the tested muliplier
+    // The width of the tested multiplier
     val mWidth = 16
 
     // Queue used to delay the arguments until the results leave the pipeline
@@ -54,7 +54,7 @@ object PipelinedMultiplySim {
 
       // Give some general info about the simulation
       printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
-      printf(s"INFO: Latency of simulated pipline is ${dut.getLatency()} cycles\n")
+      printf(s"INFO: Latency of simulated pipeline is ${dut.getLatency()} cycles\n")
 
       // Create a clock
       dut.clockDomain.forkStimulus(simPeriod)

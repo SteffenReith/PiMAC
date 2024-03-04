@@ -31,17 +31,17 @@ class PipelinedMultiply(width : Int) extends Component {
   io.setName("")
 
   // Let's define the nodes for our pipeline. We have "width" stages
-  val nodes = Array.fill(width)(Node())
+  private val nodes = Array.fill(width)(Node())
 
   // Create the connectors 
-  val connectors = Array.tabulate(width - 1)(i => StageLink(nodes(i), nodes(i + 1)))
+  private val connectors = Array.tabulate(width - 1)(i => StageLink(nodes(i), nodes(i + 1)))
 
   // Add the arguments to the first stage
-  val A = nodes(0).insert(io.a)
-  val B = nodes(0).insert(io.b)
+  private val A = nodes(0).insert(io.a)
+  private val B = nodes(0).insert(io.b)
 
   // Declare the payload for each stage (the intermediate value grows) 
-  val ACC = Array.tabulate(width)(i => Payload(UInt(width + i + 1 bits)))
+  private val ACC = Array.tabulate(width)(i => Payload(UInt(width + i + 1 bits)))
  
   // Init the accumulator on the first stage and add the ith bit-product on stage i
   for(i <- 0 until width; node = nodes(i)) new node.Area {
@@ -54,9 +54,9 @@ class PipelinedMultiply(width : Int) extends Component {
   // Build the pipeline
   Builder(connectors)
 
-  // Calculate the latency of the pipline
-  val latAtoR = LatencyAnalysis(io.a, io.result)
-  val latBtoR = LatencyAnalysis(io.b, io.result)
+  // Calculate the latency of the pipeline
+  private val latAtoR = LatencyAnalysis(io.a, io.result)
+  private val latBtoR = LatencyAnalysis(io.b, io.result)
   def getLatency() = latAtoR
 
   // Check consistent latency
@@ -70,16 +70,16 @@ class PipelinedMultiply(width : Int) extends Component {
 object PipelinedMultiply {
 
   // Make a synchronous reset and use the rising edge for the clock
-  val globalClockConfig = ClockDomainConfig(clockEdge        = RISING,
-                                            resetKind        = SYNC,
-                                            resetActiveLevel = HIGH)
+  private val globalClockConfig = ClockDomainConfig(clockEdge        = RISING,
+                                                    resetKind        = SYNC,
+                                                    resetActiveLevel = HIGH)
 
   // Suppose that the design runs with 100 MHz
-  val globalFrequency = FixedFrequency(100 MHz)
+  private val globalFrequency = FixedFrequency(100 MHz)
 
   def main(args: Array[String]) : Unit = {
 
-    // The width of the generated muliplier
+    // The width of the generated multiplier
     val mWidth = 16
 
     def elaborate(width : Int) : PipelinedMultiply = {
