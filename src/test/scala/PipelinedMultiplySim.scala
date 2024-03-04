@@ -18,12 +18,12 @@ import scopt.OptionParser
 object PipelinedMultiplySim {
 
   // Gives the smallest positive remainder r == x % n with 0 <= r < n
-  def unsignedMod(x : Int, n : Int) = (((x % n) + n) % n)
+  private def unsignedMod(x : Int, n : Int) = (((x % n) + n) % n)
 
   def main(args: Array[String]) : Unit = {
 
     // Number of simulations steps 
-    val simNum = 1000
+    val noOfRandomTests = 1000
 
     // Period used for the simulation
     val simPeriod = 10
@@ -60,7 +60,7 @@ object PipelinedMultiplySim {
       dut.clockDomain.forkStimulus(simPeriod)
 
       // Do the simulation for as much iterations cycles a test cases (plus some spare cycles)
-      SimTimeout(simPeriod * (simNum + 2 * dut.getLatency() + 10))
+      SimTimeout(simPeriod * (noOfRandomTests + 2 * dut.getLatency() + 10))
 
       // Create a thread for adding / creating test data 
       val feeder = fork {
@@ -69,7 +69,7 @@ object PipelinedMultiplySim {
         printf("INFO: Started a thread to create random test data\n")
 
         // Feed 100 operands in the simulation
-        for (i <- 0 until simNum) {
+        for (i <- 0 until noOfRandomTests) {
       
           // Generate test data randomly
           val argA = unsignedMod(Random.nextInt(), 1 << mWidth)
@@ -100,7 +100,7 @@ object PipelinedMultiplySim {
         for (i <- 0 until dut.getLatency()) dut.clockDomain.waitSampling()
 
         // Check all testcases 
-        for (i <- 0 until simNum) {
+        for (i <- 0 until noOfRandomTests) {
 
           // Wait for the next clock cycle
           dut.clockDomain.waitSampling()
