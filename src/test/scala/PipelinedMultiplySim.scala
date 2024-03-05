@@ -13,8 +13,6 @@ import spinal.lib._
 import spinal.core._
 import spinal.core.sim._
 
-import scopt.OptionParser
-
 object PipelinedMultiplySim {
 
   // Gives the smallest positive remainder r == x % n with 0 <= r < n
@@ -22,7 +20,7 @@ object PipelinedMultiplySim {
 
   def main(args: Array[String]) : Unit = {
 
-    // Number of simulations steps 
+    // Number of random tests
     val noOfRandomTests = 1000
 
     // Period used for the simulation
@@ -52,6 +50,13 @@ object PipelinedMultiplySim {
              .withTimePrecision(100 ps)
              .compile(new PipelinedMultiply(mWidth)).doSim(seed = 2) { dut =>
 
+      // Some special corner-cases
+      val specialTests = Array[(Int, Int)]((((1 << mWidth) - 1), (((1 << mWidth) - 1))), 
+                                           (0, 0), 
+                                           (1, 0), (0, 1), (1, 1),
+                                           (0, 2),(2, 0), 
+                                           (128, 128), (128, 127))
+
       // Give some general info about the simulation
       printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
       printf(s"INFO: Latency of simulated pipeline is ${dut.getLatency()} cycles\n")
@@ -68,15 +73,24 @@ object PipelinedMultiplySim {
         // Give some information
         printf("INFO: Started a thread to create random test data\n")
 
-        // Feed 100 operands in the simulation
-        for (i <- 0 until noOfRandomTests) {
+        // Feed random and special operands in the simulation
+        for (i <- 0 until noOfRandomTests + specialTests.length) {
       
-          // Generate test data randomly
-          val argA = unsignedMod(Random.nextInt(), 1 << mWidth)
-          val argB = unsignedMod(Random.nextInt(), 1 << mWidth)
+          // Check for random test mode 
+          val (argA, argB) = if (i < noOfRandomTests) { 
+
+            // Generate test data randomly
+            (unsignedMod(Random.nextInt(), 1 << mWidth), unsignedMod(Random.nextInt(), 1 << mWidth))
           
+          } else {
+
+            // Use provided test cases
+            specialTests(i - noOfRandomTests)
+
+          }
+
           // Type the testcase to the console
-          printf(f"INFO: Feed test case #${i}%3d with A=${argA}%5d and B=${argB}%5d\n")
+          printf(f"INFO: Feed test case #${i}%4d with A=${argA}%5d and B=${argB}%5d\n")
 
           // Put the test data to the delay queue
           argsQueue.enqueue((argA, argB))
@@ -99,8 +113,11 @@ object PipelinedMultiplySim {
         // Wait for result from simulated pipeline (one more step for first fed data)
         for (i <- 0 until dut.getLatency()) dut.clockDomain.waitSampling()
 
+        // Short remark about the kind of test cases to be checked
+        printf("INFO: Check random tests\n")
+
         // Check all testcases 
-        for (i <- 0 until noOfRandomTests) {
+        for (i <- 0 until noOfRandomTests + specialTests.length) {
 
           // Wait for the next clock cycle
           dut.clockDomain.waitSampling()
@@ -108,11 +125,14 @@ object PipelinedMultiplySim {
           // Get data out of the delay queue
           val (a,b) = argsQueue.dequeue
 
+          // Short remark about the kind of test cases to be checked
+          if (i == noOfRandomTests) printf("INFO: Check special tests\n")
+
           // Check the result
           assert((a.toLong * b.toLong) == dut.io.result.toLong, s"Got ${dut.io.result.toLong}, expected ${a.toLong * b.toLong}\n")
 
           // Give some info
-          printf(f"INFO: Eat test case ${i} with A: ${a}, B: ${b} Pipe: ${dut.io.result.toLong} (Check: ${a.toLong * b.toLong})\n")
+          printf(f"INFO: Eat test case ${i}%4d with A: ${a}%5d, B: ${b}%5d Pipe: ${dut.io.result.toLong}%11d (Check: ${a.toLong * b.toLong}%11d)\n")
 
         }
 
