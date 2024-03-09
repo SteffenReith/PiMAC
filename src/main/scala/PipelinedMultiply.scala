@@ -11,6 +11,7 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.misc.pipeline._
 
+// A simple muliply and add implementation which calculates a * b + c
 class PipelinedMultiply(width : Int) extends Component {
 
   // Check for correct width
@@ -18,9 +19,10 @@ class PipelinedMultiply(width : Int) extends Component {
 
   val io = new Bundle {
 
-    // Arguments for the multiplier to calculate a * b
+    // Arguments for the multiplier to calculate a * b + c
     val a = in UInt (width bits)
     val b = in UInt (width bits)
+    val c = in UInt (width bits)
 
     // Result of the multiplication
     val result = out UInt (2 * width bits)
@@ -39,13 +41,14 @@ class PipelinedMultiply(width : Int) extends Component {
   // Add the arguments to the first stage
   private val A = nodes(0).insert(io.a)
   private val B = nodes(0).insert(io.b)
+  private val C = nodes(0).insert(io.c)
 
   // Declare the payload for each stage (the intermediate value grows) 
   private val ACC = Array.tabulate(width)(i => Payload(UInt(width + i + 1 bits)))
  
   // Init the accumulator on the first stage and add the ith bit-product on stage i
   for(i <- 0 until width; node = nodes(i)) new node.Area {
-    ACC(i) := (i == 0).mux[UInt](0, ACC(i-1)) +^ (A << i).andMask(B(i))
+    ACC(i) := (i == 0).mux[UInt](C, ACC(i-1)) +^ (A << i).andMask(B(i))
   }
 
   // Get the result from the last node

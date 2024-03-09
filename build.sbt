@@ -13,4 +13,3 @@ val spinalSim        = "com.github.spinalhdl" %% "spinalhdl-sim" % spinalVersion
 libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin, spinalSim)
 
 fork := true
-
