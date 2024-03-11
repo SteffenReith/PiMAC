@@ -27,7 +27,7 @@ object PipelinedMultiplySim {
     val simPeriod = 10
 
     // The width of the tested multiplier
-    val mWidth = 16
+    val mWidth = 18
 
     // Queue used to delay the arguments until the results leave the pipeline
     var argsQueue = mut.Queue[(Int, Int, Int)]()
@@ -55,7 +55,8 @@ object PipelinedMultiplySim {
                                                 (0, 0, 0), (0, 0, 1), 
                                                 (1, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1),
                                                 (0, 2, 0), (2, 0, 0), (0, 2, 1),(2, 0, 1),
-                                                (128, 128, 0), (128, 127, 0), (128, 128, 1), (128, 127, 1))
+                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 0), (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 0), 
+                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 1), (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 1))
 
       // Give some general info about the simulation
       printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
@@ -64,11 +65,7 @@ object PipelinedMultiplySim {
       // Create a clock
       dut.clockDomain.forkStimulus(simPeriod)
 
-      // Do the simulation for as much iterations cycles a test cases (plus some spare cycles)
-      var timeOutCycles = simPeriod * (noOfRandomTests + specialTests.length + 2 * dut.getLatency()) + 10
-      SimTimeout(timeOutCycles)
-      printf(s"INFO: Set timeout to ${timeOutCycles} time units\n")
-
+      // Count the spent cycles 
       var cycles = 0
       dut.clockDomain.onRisingEdges { cycles = cycles + 1 }
 
