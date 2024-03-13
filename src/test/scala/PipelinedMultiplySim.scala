@@ -27,7 +27,7 @@ object PipelinedMultiplySim {
     val simPeriod = 10
 
     // The width of the tested multiplier
-    val mWidth = 18
+    val mWidth = 16
 
     // Queue used to delay the arguments until the results leave the pipeline
     var argsQueue = mut.Queue[(Int, Int, Int)]()
@@ -56,8 +56,9 @@ object PipelinedMultiplySim {
                                                 (1, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1),
                                                 (0, 2, 0), (2, 0, 0), (0, 2, 1),(2, 0, 1),
                                                 ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 0), (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 0), 
-                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 1), (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 1))
-
+                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 1), (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 1),
+                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, ((1 << mWidth) - 1)), (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, ((1 << mWidth) - 1)))
+                                              
       // Give some general info about the simulation
       printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
       printf(s"INFO: Latency of simulated pipeline is ${dut.getLatency()} cycles\n")
@@ -140,7 +141,7 @@ object PipelinedMultiplySim {
         }
 
         // Give some information about the number of spent cycles
-        printf(s"INFO: Spend ${cycles} cycles\n")
+        printf(s"INFO: Spent ${cycles} cycles\n")
 
       }
 
