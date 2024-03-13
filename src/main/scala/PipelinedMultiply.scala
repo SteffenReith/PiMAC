@@ -66,7 +66,7 @@ class PipelinedMultiply(width : Int) extends Component {
   assert(LatencyAnalysis(io.a, io.result) == LatencyAnalysis(io.b, io.result), "ERROR: Incorrect latency analysis!")
   
   // Give some general info
-  printf(s"INFO: Latency of pipeline ${LatencyAnalysis(io.a, io.result)}\n")
+  printf(s"INFO: Latency of pipeline is ${LatencyAnalysis(io.a, io.result)} cycles\n")
   
 }
 

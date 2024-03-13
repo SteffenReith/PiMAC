@@ -23,16 +23,16 @@ object PipelinedMultiplySim {
   def main(args: Array[String]) : Unit = {
 
     // Number of random tests
-    var noOfRandomTests : Option[Int] = None
+    var noOfRandomTests : Int = 100
 
     // Period used for the simulation
     val simPeriod = 10
 
     // Holds the seed used for random number generation
-    var simSeed : Option[Int] = None
+    var simSeed : Int = 0
 
     // The width of the tested multiplier
-    var mWidth : Option[Int] = None
+    var mWidth : Int = 16
 
     // Queue used to delay the arguments until the results leave the pipeline
     var argsQueue = mut.Queue[(Int, Int, Int)]()
@@ -44,33 +44,33 @@ object PipelinedMultiplySim {
       head("PipelinedMultiplySim - A gate-level simulation for a simple pipelined multiplier", "")
 
       // Option to set the seed used for random number generation
-      opt[Int]("simSeed").action {(s,c) => c.copy(simSeed = Some(s)) }
+      opt[Int]("simSeed").action {(s,c) => c.copy(simSeedArg = Some(s)) }
                          .text("Set the seed used for for random number generation")
 
       // Option to specify the number of random test
-      opt[Int]("noOfRandomTests").action {(s,c) => c.copy(noOfRandomTests = Some(s)) }
+      opt[Int]("noOfRandomTests").action {(s,c) => c.copy(noOfRandomTestsArg = Some(s)) }
                                  .text("Specify the number of simulated random tests")
 
       // Option to specify the width of the multiplier 
-      opt[Int]("mWidth").action {(s,c) => c.copy(mWidth = Some(s)) }
+      opt[Int]("mWidth").action {(s,c) => c.copy(mWidthArg = Some(s)) }
                         .text("Set the width of the multiplier")
 
       // Help option
       help("help").text("print this text")
 
     }
-    parser.parse(args, ArgsConfig(noOfRandomTests = Some(100),
-                                  mWidth          = Some(16),
-                                  simSeed         = Some(Random.nextInt))).map {cfg => 
+    parser.parse(args, ArgsConfig(noOfRandomTestsArg = Some(100),
+                                  mWidthArg          = Some(16),
+                                  simSeedArg         = Some(Random.nextInt))).map {cfg => 
 
       // Update the seed (if option is not set then use a random seed)
-      simSeed = cfg.simSeed
+      simSeed = cfg.simSeedArg.get
 
       // Update the number of test 
-      noOfRandomTests = cfg.noOfRandomTests
+      noOfRandomTests = cfg.noOfRandomTestsArg.get
 
       // Update the width of the multiplier
-      mWidth = cfg.mWidth
+      mWidth = cfg.mWidthArg.get
 
     } getOrElse {
 
@@ -95,22 +95,22 @@ object PipelinedMultiplySim {
              .withWave
              .withTimeScale(1 ns)
              .withTimePrecision(100 ps)
-             .compile(new PipelinedMultiply(mWidth.get)).doSim(seed = simSeed.get) { dut =>
+             .compile(new PipelinedMultiply(mWidth)).doSim(seed = simSeed) { dut =>
 
       // Some special corner-cases
-      val specialTests = Array[(Int, Int, Int)]((((1 << mWidth.get) - 1), (((1 << mWidth.get) - 1)), (((1 << mWidth.get) - 1))), 
+      val specialTests = Array[(Int, Int, Int)]((((1 << mWidth) - 1), (((1 << mWidth) - 1)), (((1 << mWidth) - 1))), 
                                                 (0, 0, 0), (0, 0, 1), 
                                                 (1, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1),
                                                 (0, 2, 0), (2, 0, 0), (0, 2, 1),(2, 0, 1),
-                                                ((1 << (mWidth.get - 1)) - 1, (1 << (mWidth.get - 1)) - 1, 0), 
-                                                (1 << (mWidth.get - 1), (1 << (mWidth.get - 1)) - 1, 0), 
-                                                ((1 << (mWidth.get - 1)) - 1, (1 << (mWidth.get - 1)) - 1, 1), 
-                                                (1 << (mWidth.get - 1), (1 << (mWidth.get - 1)) - 1, 1),
-                                                ((1 << (mWidth.get - 1)) - 1, (1 << (mWidth.get - 1)) - 1, ((1 << mWidth.get) - 1)), 
-                                                (1 << (mWidth.get - 1), (1 << (mWidth.get - 1)) - 1, ((1 << mWidth.get) - 1)))
+                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 0), 
+                                                (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 0), 
+                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 1), 
+                                                (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 1),
+                                                ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, ((1 << mWidth) - 1)), 
+                                                (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, ((1 << mWidth) - 1)))
                                               
       // Give some general info about the simulation
-      printf(s"INFO: Start simulation (Width of multiplier is ${mWidth.get})\n")
+      printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
       printf(s"INFO: Latency of simulated pipeline is ${dut.getLatency()} cycles\n")
 
       // Create a clock
@@ -127,18 +127,18 @@ object PipelinedMultiplySim {
         printf("INFO: Started a thread to create random test data\n")
 
         // Feed random and special operands in the simulation
-        for (i <- 0 until noOfRandomTests.get + specialTests.length) {
+        for (i <- 0 until noOfRandomTests + specialTests.length) {
       
           // Check for random test mode 
-          val (argA, argB, argC) = if (i < noOfRandomTests.get) { 
+          val (argA, argB, argC) = if (i < noOfRandomTests) { 
 
             // Generate test data randomly
-            (unsignedMod(Random.nextInt(), 1 << mWidth.get), unsignedMod(Random.nextInt(), 1 << mWidth.get), unsignedMod(Random.nextInt(), 1 << mWidth.get))
+            (unsignedMod(Random.nextInt(), 1 << mWidth), unsignedMod(Random.nextInt(), 1 << mWidth), unsignedMod(Random.nextInt(), 1 << mWidth))
           
           } else {
 
-            // Use provided test cases
-            specialTests(i - noOfRandomTests.get)
+            // Use provided special test cases
+            specialTests(i - noOfRandomTests)
 
           }
 
@@ -171,7 +171,7 @@ object PipelinedMultiplySim {
         printf("INFO: Check random testss\n")
 
         // Check all testcases 
-        for (i <- 0 until noOfRandomTests.get + specialTests.length) {
+        for (i <- 0 until noOfRandomTests + specialTests.length) {
 
           // Wait for the next clock cycle
           dut.clockDomain.waitSampling()
@@ -180,7 +180,7 @@ object PipelinedMultiplySim {
           val (a,b,c) = argsQueue.dequeue
 
           // Short remark about the kind of test cases to be checked
-          if (i == noOfRandomTests.get) printf("INFO: Check special tests\n")
+          if (i == noOfRandomTests) printf("INFO: Check special tests\n")
 
           // Check the result
           assert(((a.toLong * b.toLong) + c.toLong) == dut.io.result.toLong, s"Got ${dut.io.result.toLong}, expected ${(a.toLong * b.toLong) + c.toLong}\n")

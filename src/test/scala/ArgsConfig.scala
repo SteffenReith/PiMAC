@@ -8,6 +8,6 @@
  */
 
 // Used by scopt to store information
-case class ArgsConfig(noOfRandomTests : Option[Int],
-                      mWidth          : Option[Int],
-                      simSeed         : Option[Int])
+case class ArgsConfig(noOfRandomTestsArg : Option[Int],
+                      mWidthArg          : Option[Int],
+                      simSeedArg         : Option[Int])
