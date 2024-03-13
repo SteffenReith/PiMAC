@@ -8,8 +8,6 @@
  */
 
 // Used by scopt to store information
-case class ArgsConfig(useDevicePrefix    : Boolean,
-                      createWaveFile     : Boolean,
-                      serialDevicePrefix : String,
-                      serialDeviceName   : String,
-                      simSeed            : Option[Int])
+case class ArgsConfig(noOfRandomTests : Option[Int],
+                      mWidth          : Option[Int],
+                      simSeed         : Option[Int])
