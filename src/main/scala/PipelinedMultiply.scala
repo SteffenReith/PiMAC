@@ -5,7 +5,10 @@
  * Project Name:   PipelinedMultiply - A demo for SpinalHDL's pipeline framework
  * Note:           Basic pipeline design by Charles Papon
  */
+
 import scala.language.postfixOps
+
+import Reporter._
 
 import spinal.core._
 import spinal.lib._
@@ -66,7 +69,7 @@ class PipelinedMultiply(width : Int) extends Component {
   assert(LatencyAnalysis(io.a, io.result) == LatencyAnalysis(io.b, io.result), "ERROR: Incorrect latency analysis!")
   
   // Give some general info
-  printf(s"INFO: Latency of pipeline is ${LatencyAnalysis(io.a, io.result)} cycles\n")
+  printReport(s"Latency of pipeline is ${LatencyAnalysis(io.a, io.result)} cycles\n")
   
 }
 
@@ -85,6 +88,9 @@ object PipelinedMultiply {
     // The width of the generated multiplier
     val mWidth = 16
 
+    // Set the noise level to "high"
+    setVerboseness(true)
+
     def elaborate(width : Int) : PipelinedMultiply = {
 
       // Create a multiplier instance
@@ -97,14 +103,14 @@ object PipelinedMultiply {
                  genVhdlPkg                   = true,
                  defaultConfigForClockDomains = globalClockConfig,
                  defaultClockDomainFrequency  = globalFrequency,
-                 targetDirectory="gen/src/vhdl").generateVhdl(elaborate(mWidth)).printPruned()
+                 targetDirectory="gen/src/vhdl").generateVhdl(elaborate(width = mWidth)).printPruned()
 
     // Generate Verilog
     SpinalConfig(mergeAsyncProcess              = true,
                  onlyStdLogicVectorAtTopLevelIo = true,
                  defaultConfigForClockDomains   = globalClockConfig,
                  defaultClockDomainFrequency    = globalFrequency,
-                 targetDirectory="gen/src/verilog").generateVerilog(elaborate(mWidth)).printPruned()
+                 targetDirectory="gen/src/verilog").generateVerilog(elaborate(width = mWidth)).printPruned()
 
   }
 

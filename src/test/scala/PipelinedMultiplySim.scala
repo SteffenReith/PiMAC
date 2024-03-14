@@ -2,8 +2,10 @@
  * Author: Steffen Reith (Steffen.Reith@hs-rm.de)
  *
  * Create Date:    Wed Feb 14 10:39:22 CET 2024
+ * Module Name:    PipelinedMultiplySim - A simple testbench for PipelinedMultiply
  * Project Name:   PipelinedMultiply - A demo for SpinalHDL's pipeline framework
  */
+
 import scala.sys.exit
 import scala.util.Random
 import scala.collection.{mutable => mut}
@@ -14,6 +16,8 @@ import spinal.lib._
 
 import spinal.core._
 import spinal.core.sim._
+
+import Reporter._
 
 object PipelinedMultiplySim {
 
@@ -55,22 +59,30 @@ object PipelinedMultiplySim {
       opt[Int]("mWidth").action {(s,c) => c.copy(mWidthArg = Some(s)) }
                         .text("Set the width of the multiplier")
 
+      // Option to specify the verboseness
+      opt[Boolean]("verbose").action {(v,c) => c.copy(verboseArg = Some(v)) }
+                             .text("Give detailed information about performed tests")                
+
       // Help option
       help("help").text("print this text")
 
     }
     parser.parse(args, ArgsConfig(noOfRandomTestsArg = Some(100),
                                   mWidthArg          = Some(16),
-                                  simSeedArg         = Some(Random.nextInt))).map {cfg => 
+                                  simSeedArg         = Some(Random.nextInt),
+                                  verboseArg         = Some(true))).map {cfg => 
 
       // Update the seed (if option is not set then use a random seed)
       simSeed = cfg.simSeedArg.get
 
-      // Update the number of test 
+      // Update the number of tests
       noOfRandomTests = cfg.noOfRandomTestsArg.get
 
       // Update the width of the multiplier
       mWidth = cfg.mWidthArg.get
+
+      // Update the level of verboseness
+      setVerboseness(cfg.verboseArg.get)
 
     } getOrElse {
 
@@ -100,18 +112,18 @@ object PipelinedMultiplySim {
       // Some special corner-cases
       val specialTests = Array[(Int, Int, Int)]((((1 << mWidth) - 1), (((1 << mWidth) - 1)), (((1 << mWidth) - 1))), 
                                                 (0, 0, 0), (0, 0, 1), 
-                                                (1, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1),
-                                                (0, 2, 0), (2, 0, 0), (0, 2, 1),(2, 0, 1),
+                                                (1, 0, 0), (0, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 0), (1, 1, 1),
+                                                (0, 2, 0), (2, 0, 0), (0, 2, 1), (2, 0, 1), (2, 2, 0), (2, 2, 1),
                                                 ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 0), 
-                                                (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 0), 
+                                                ( 1 << (mWidth - 1),      (1 << (mWidth - 1)) - 1, 0), 
                                                 ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, 1), 
-                                                (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, 1),
+                                                ( 1 << (mWidth - 1),      (1 << (mWidth - 1)) - 1, 1),
                                                 ((1 << (mWidth - 1)) - 1, (1 << (mWidth - 1)) - 1, ((1 << mWidth) - 1)), 
-                                                (1 << (mWidth - 1), (1 << (mWidth - 1)) - 1, ((1 << mWidth) - 1)))
+                                                ( 1 << (mWidth - 1),      (1 << (mWidth - 1)) - 1, ((1 << mWidth) - 1)))
                                               
       // Give some general info about the simulation
-      printf(s"INFO: Start simulation (Width of multiplier is ${mWidth})\n")
-      printf(s"INFO: Latency of simulated pipeline is ${dut.getLatency()} cycles\n")
+      printReport(s"Start simulation (Width of multiplier is ${mWidth})\n")
+      printReport(s"Latency of simulated pipeline is ${dut.getLatency()} cycles\n")
 
       // Create a clock
       dut.clockDomain.forkStimulus(simPeriod)
@@ -124,7 +136,7 @@ object PipelinedMultiplySim {
       val feeder = fork {
 
         // Give some information
-        printf("INFO: Started a thread to create random test data\n")
+        printReport("Started a thread to create random test data\n")
 
         // Feed random and special operands in the simulation
         for (i <- 0 until noOfRandomTests + specialTests.length) {
@@ -143,7 +155,7 @@ object PipelinedMultiplySim {
           }
 
           // Type the testcase to the console
-          printf(f"INFO: Feed test case #${i}%4d with A=${argA}%5d, B=${argB}%5d and C=${argC}%5d\n")
+          printReport(f"Feed test case #${i}%4d with A=${argA}%5d, B=${argB}%5d and C=${argC}%5d\n")
 
           // Put the test data to the delay queue
           argsQueue.enqueue((argA, argB, argC))
@@ -162,13 +174,13 @@ object PipelinedMultiplySim {
       val eater = fork {
 
         // Give some information
-        printf("INFO: Started a thread to check the result of the simulation\n")
+        printReport("Started a thread to check the result of the simulation\n")
 
         // Wait for result from simulated pipeline (one more step for first fed data)
         for (i <- 0 until dut.getLatency()) dut.clockDomain.waitSampling()
 
         // Short remark about the kind of test cases to be checked
-        printf("INFO: Check random testss\n")
+        printReport("Check random testss\n")
 
         // Check all testcases 
         for (i <- 0 until noOfRandomTests + specialTests.length) {
@@ -180,18 +192,18 @@ object PipelinedMultiplySim {
           val (a,b,c) = argsQueue.dequeue
 
           // Short remark about the kind of test cases to be checked
-          if (i == noOfRandomTests) printf("INFO: Check special tests\n")
+          if (i == noOfRandomTests) printReport("Check special tests\n")
 
           // Check the result
           assert(((a.toLong * b.toLong) + c.toLong) == dut.io.result.toLong, s"Got ${dut.io.result.toLong}, expected ${(a.toLong * b.toLong) + c.toLong}\n")
 
           // Give some info
-          printf(f"INFO: Eat test case #${i}%4d with A: ${a}%5d, B: ${b}%5d, C: ${c}%5d and Pipe: ${dut.io.result.toLong}%11d (Check: ${(a.toLong * b.toLong) + c.toLong}%11d)\n")
+          printReport(f"Eat test case #${i}%4d with A: ${a}%5d, B: ${b}%5d, C: ${c}%5d and Pipe: ${dut.io.result.toLong}%11d (Check: ${(a.toLong * b.toLong) + c.toLong}%11d)\n")
 
         }
 
         // Give some information about the number of spent cycles
-        printf(s"INFO: Spent ${cycles} cycles\n")
+        printReport(s"Spent ${cycles} cycles\n")
 
       }
 
@@ -200,7 +212,8 @@ object PipelinedMultiplySim {
       eater.join()
 
       // Give some information about the ended simulation
-      println("INFO: Simulation terminated successfully!")
+      setVerboseness(true)
+      printReport("Simulation terminated successfully!\n")
 
     }
 
