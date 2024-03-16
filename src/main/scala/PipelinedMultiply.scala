@@ -86,7 +86,7 @@ object PipelinedMultiply {
   def main(args: Array[String]) : Unit = {
 
     // The width of the generated multiplier
-    val mWidth = 16
+    val mWidth = 4
 
     // Set the noise level to "high"
     setVerboseness(true)

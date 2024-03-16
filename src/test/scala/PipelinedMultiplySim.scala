@@ -26,17 +26,8 @@ object PipelinedMultiplySim {
 
   def main(args: Array[String]) : Unit = {
 
-    // Number of random tests
-    var noOfRandomTests : Int = 100
-
     // Period used for the simulation
     val simPeriod = 10
-
-    // Holds the seed used for random number generation
-    var simSeed : Int = 0
-
-    // The width of the tested multiplier
-    var mWidth : Int = 16
 
     // Queue used to delay the arguments until the results leave the pipeline
     var argsQueue = mut.Queue[(Int, Int, Int)]()
@@ -67,22 +58,18 @@ object PipelinedMultiplySim {
       help("help").text("print this text")
 
     }
-    parser.parse(args, ArgsConfig(noOfRandomTestsArg = Some(100),
-                                  mWidthArg          = Some(16),
-                                  simSeedArg         = Some(Random.nextInt),
-                                  verboseArg         = Some(true))).map {cfg => 
 
-      // Update the seed (if option is not set then use a random seed)
-      simSeed = cfg.simSeedArg.get
-
-      // Update the number of tests
-      noOfRandomTests = cfg.noOfRandomTestsArg.get
-
-      // Update the width of the multiplier
-      mWidth = cfg.mWidthArg.get
+    // Set the number of tests, the seed for random number and the width of the multiplier
+    val (noOfRandomTests, simSeed, mWidth) = parser.parse(args, ArgsConfig(noOfRandomTestsArg = Some(100),
+                                                                           mWidthArg          = Some(4),
+                                                                           simSeedArg         = Some(Random.nextInt),
+                                                                           verboseArg         = Some(true))).map {cfg => 
 
       // Update the level of verboseness
       setVerboseness(cfg.verboseArg.get)
+
+      // Return the calculated values
+      (cfg.noOfRandomTestsArg.get, cfg.simSeedArg.get, cfg.mWidthArg.get)
 
     } getOrElse {
 
@@ -194,7 +181,7 @@ object PipelinedMultiplySim {
           // Short remark about the kind of test cases to be checked
           if (i == noOfRandomTests) printReport("Check special tests\n")
 
-          // Check the result
+          // Check the result (result must be a * b + c)
           assert(((a.toLong * b.toLong) + c.toLong) == dut.io.result.toLong, s"Got ${dut.io.result.toLong}, expected ${(a.toLong * b.toLong) + c.toLong}\n")
 
           // Give some info
