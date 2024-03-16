@@ -98,6 +98,10 @@ object PipelinedMultiply {
 
     }
 
+    // Report the width
+    printReport(s"Generate a multiplier of width ${mWidth})\n")
+
+
     // Generate VHDL
     SpinalConfig(mergeAsyncProcess            = true,
                  genVhdlPkg                   = true,
