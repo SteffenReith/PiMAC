@@ -1,4 +1,4 @@
-name := "PipelinedMultiply"
+name := "PiMAC"
 version := "1.0"
 
 scalaVersion := "2.12.18"
