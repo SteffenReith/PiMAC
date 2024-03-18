@@ -1,3 +1,4 @@
-# PipeMult
+# PiMAC
 
-A simple pipelined multiplier using the SpinalHDL pipeline class
+A simple pipelined multiply and accumulate unit using the SpinalHDL pipeline class to compute a*b+c
+
