@@ -147,7 +147,7 @@ object PiMACSim {
           // Put the test data to the delay queue
           argsQueue.enqueue((argA, argB, argC))
 
-          // Feed the data into the simulation of the multiplier
+          // Feed the data into the simulation of the multiplier and wait for the rising edge
           dut.io.a #= argA
           dut.io.b #= argB
           dut.io.c #= argC
