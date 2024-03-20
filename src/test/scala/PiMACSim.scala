@@ -61,9 +61,9 @@ object PiMACSim {
 
     // Set the number of tests, the seed for random number and the width of the multiplier
     val (noOfRandomTests, simSeed, mWidth) = parser.parse(args, SimArgsConfig(noOfRandomTestsArg = Some(100),
-                                                                           mWidthArg          = Some(4),
-                                                                           simSeedArg         = Some(Random.nextInt),
-                                                                           verboseArg         = Some(true))).map {cfg => 
+                                                                              mWidthArg          = Some(4),
+                                                                              simSeedArg         = Some(Random.nextInt),
+                                                                              verboseArg         = Some(true))).map {cfg => 
 
       // Update the level of verboseness
       setVerboseness(cfg.verboseArg.get)
